@@ -9,14 +9,21 @@
 import UIKit
 import WebKit
 
-class ViewController: UIViewController {
+final class ViewController: UIViewController {
 
-    lazy var webViewController: WebViewController = {
-        let vc = WebViewController()
-        addChild(vc)
-        vc.didMove(toParent: self)
-        return vc
-    }()
+    var webViewController: WebViewController {
+        didSet { webViewControllerDidChange(from: oldValue) }
+    }
+
+    init() {
+        self.webViewController = WebViewController()
+        super.init(nibName: nil, bundle: nil)
+        webViewControllerDidChange(from: nil)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     lazy var btnRotate = UIBarButtonItem(barButtonSystemItem: .refresh,
                                        target: self,
@@ -32,10 +39,17 @@ class ViewController: UIViewController {
                                           target: self,
                                           action: #selector(inputURL))
 
+    lazy var btnRefresh = UIBarButtonItem(title: "Refresh",
+                                          style: .plain,
+                                          target: self,
+                                          action: #selector(refresh))
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         view.addSubview(webViewController.view)
+        webViewController.view.transform = .identity
+        webViewController.view.frame = view.bounds
         webViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webViewController.loadURL(URL(string: "https://www.google.com")!)
 
@@ -43,6 +57,7 @@ class ViewController: UIViewController {
         toolbarItems = [btnRotate, .flexibleSpace, btnSync]
 
         navigationItem.rightBarButtonItem = btnAddress
+        navigationItem.leftBarButtonItem = btnRefresh
 
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(updateAirplay),
@@ -55,6 +70,12 @@ class ViewController: UIViewController {
                                                object: nil)
     }
 
+    @objc
+    func refresh() {
+        webViewController.url.map {
+            webViewController.loadURL($0)
+        }
+    }
     @objc
     func inputURL() {
         let alert = UIAlertController(title: nil, message: "Enter URL", preferredStyle: .alert)
@@ -101,13 +122,18 @@ class ViewController: UIViewController {
             return
         }
 
-        guard let url = webViewController.url else { return }
-
         if let other = self.other {
-            other.root.child.loadURL(url)
+            let otherWebViewController = other.root.child
+            let thisWebViewController = webViewController
+            let tmpWebViewController = WebViewController()
+            webViewController = tmpWebViewController
+            other.root.child = thisWebViewController
+            webViewController = otherWebViewController
         } else {
+            let thisWebViewController = webViewController
+            webViewController = WebViewController()
             let other = BrowserWindow(screen: otherScreen)
-            other.root.child.loadURL(url)
+            other.root.child = thisWebViewController
             self.other = other
         }
     }
@@ -117,9 +143,32 @@ class ViewController: UIViewController {
 
         if (text.hasPrefix("http://") || text.hasPrefix("https://")), let url = URL(string: text) {
             webViewController.loadURL(url)
-        } else if let url = URL(string: "http://\(text)") {
+        } else if let url = URL(string: "https://\(text)") {
             webViewController.loadURL(url)
         }
+    }
+
+    private func webViewControllerDidChange(from previous: WebViewController?) {
+        guard webViewController != previous else { return }
+
+        previous.map {
+            $0.willMove(toParent: nil)
+            $0.viewIfLoaded?.removeFromSuperview()
+            $0.removeFromParent()
+        }
+
+        addChild(webViewController)
+        if let view = viewIfLoaded {
+            view.addSubview(webViewController.view)
+            webViewController.view.transform = .identity
+            webViewController.view.frame = view.bounds
+            webViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = 0.2
+            view.layer.add(fade, forKey: "fade")
+        }
+        webViewController.didMove(toParent: self)
     }
 }
 

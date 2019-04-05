@@ -10,7 +10,9 @@ import UIKit
 
 final class RotatingViewController<T: UIViewController>: UIViewController {
 
-    let child: T
+    var child: T {
+        didSet { childDidChange(from: oldValue) }
+    }
 
     init(_ child: T) {
         self.child = child
@@ -46,8 +48,32 @@ final class RotatingViewController<T: UIViewController>: UIViewController {
         super.viewDidLoad()
         
         view.addSubview(child.view)
+        child.view.frame = view.bounds
         child.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         childOrientationDidChange(from: nil)
+    }
+
+    private func childDidChange(from previous: T?) {
+        guard child != previous else { return }
+
+        previous.map {
+            $0.willMove(toParent: nil)
+            $0.viewIfLoaded?.removeFromSuperview()
+            $0.removeFromParent()
+        }
+
+        addChild(child)
+        if let view = viewIfLoaded {
+            view.addSubview(child.view)
+            child.view.frame = view.bounds
+            child.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            childOrientationDidChange(from: nil)
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = 0.2
+            view.layer.add(fade, forKey: "fade")
+        }
+        child.didMove(toParent: self)
     }
 
     private func childOrientationDidChange(from previous: UIInterfaceOrientation?) {

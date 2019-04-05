@@ -66,8 +66,15 @@ class ViewController: UIViewController {
             self.browse(to: alert.textFields?.first?.text)
         }
 
+        let tvAction: UIAlertAction = UIAlertAction(title: "TV", style: .default) { _ in
+            self.browse(to: alert.textFields?.first?.text, useOther: true)
+        }
+
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         alert.addAction(goAction)
+        alert.addAction(tvAction)
+
+        alert.preferredAction = goAction
 
         present(alert, animated: true)
     }
@@ -96,12 +103,14 @@ class ViewController: UIViewController {
 
     @objc
     func sync() {
+        webViewController.url.map(syncTV)
+    }
+
+    func syncTV(to url: URL) {
         guard let otherScreen = UIScreen.otherScreen else {
             other = nil
             return
         }
-
-        guard let url = webViewController.url else { return }
 
         if let other = self.other {
             other.root.child.loadURL(url)
@@ -112,14 +121,26 @@ class ViewController: UIViewController {
         }
     }
 
-    func browse(to text: String?) {
-        guard let text = text else { return }
+    func browse(to text: String?, useOther: Bool = false) {
+        guard let url = makeURL(from: text) else { return }
 
-        if (text.hasPrefix("http://") || text.hasPrefix("https://")), let url = URL(string: text) {
-            webViewController.loadURL(url)
-        } else if let url = URL(string: "http://\(text)") {
+        if useOther {
+            syncTV(to: url)
+        } else {
             webViewController.loadURL(url)
         }
+    }
+
+    func makeURL(from text: String?) -> URL? {
+        guard let text = text else { return nil }
+
+        if (text.hasPrefix("http://") || text.hasPrefix("https://")), let url = URL(string: text) {
+            return url
+        } else if let url = URL(string: "https://\(text)") {
+           return url
+        }
+
+        return nil
     }
 }
 

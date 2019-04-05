@@ -58,7 +58,9 @@ class ViewController: UIViewController {
     @objc
     func inputURL() {
         let alert = UIAlertController(title: nil, message: "Enter URL", preferredStyle: .alert)
-        alert.addTextField(configurationHandler: nil)
+        alert.addTextField { textField in
+            textField.keyboardType = .URL
+        }
 
         let goAction: UIAlertAction = UIAlertAction(title: "Go", style: .default) { _ in
             self.browse(to: alert.textFields?.first?.text)

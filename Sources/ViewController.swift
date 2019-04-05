@@ -27,6 +27,11 @@ class ViewController: UIViewController {
                                        target: self,
                                        action: #selector(sync))
 
+    lazy var btnAddress = UIBarButtonItem(title: "URL",
+                                          style: .plain,
+                                          target: self,
+                                          action: #selector(inputURL))
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -37,6 +42,8 @@ class ViewController: UIViewController {
         updateAirplay()
         toolbarItems = [btnRotate, .flexibleSpace, btnSync]
 
+        navigationItem.rightBarButtonItem = btnAddress
+
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(updateAirplay),
                                                name: UIScreen.didConnectNotification,
@@ -46,6 +53,21 @@ class ViewController: UIViewController {
                                                selector: #selector(updateAirplay),
                                                name: UIScreen.didDisconnectNotification,
                                                object: nil)
+    }
+
+    @objc
+    func inputURL() {
+        let alert = UIAlertController(title: nil, message: "Enter URL", preferredStyle: .alert)
+        alert.addTextField(configurationHandler: nil)
+
+        let goAction: UIAlertAction = UIAlertAction(title: "Go", style: .default) { _ in
+            self.browse(to: alert.textFields?.first?.text)
+        }
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(goAction)
+
+        present(alert, animated: true)
     }
 
     @objc
@@ -85,6 +107,16 @@ class ViewController: UIViewController {
             let other = BrowserWindow(screen: otherScreen)
             other.root.child.loadURL(url)
             self.other = other
+        }
+    }
+
+    func browse(to text: String?) {
+        guard let text = text else { return }
+
+        if (text.hasPrefix("http://") || text.hasPrefix("https://")), let url = URL(string: text) {
+            webViewController.loadURL(url)
+        } else if let url = URL(string: "http://\(text)") {
+            webViewController.loadURL(url)
         }
     }
 }

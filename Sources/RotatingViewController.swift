@@ -22,7 +22,7 @@ final class RotatingViewController<T: UIViewController>: UIViewController {
         child.didMove(toParent: self)
     }
 
-    var childOrientation: UIInterfaceOrientation = .portrait {
+    var childOrientation: UIInterfaceOrientation = .landscapeRight {
         didSet { childOrientationDidChange(from: oldValue) }
     }
 
